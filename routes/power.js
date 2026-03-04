@@ -4,24 +4,55 @@ const PowerLog = require('../models/PowerLog');
 const DeviceStatus = require('../models/DeviceStatus');
 
 // Log power data
-router.post('/log', async (req, res) => {
+router.post('/', async (req, res) => {
+  console.log('[ESP32] POST /api/power received. Body:', JSON.stringify(req.body), 'Query:', req.query);
   try {
-    const { power, voltage, current, energy } = req.body;
+    // Accept from both body and query parameters
+    let { rms, timestamp } = req.body.rms !== undefined ? req.body : req.query;
+
+    rms = parseFloat(rms) || 0;
+    console.log('[ESP32-RMS] Parsed RMS value:', rms);
+
+    // Calculate current = rms * 0.000125
+    const current = rms * 0.000125;
+
+    // Calculate power = current * 230 (voltage constant at 230V)
+    const power = current * 230;
+
+    // Get previous log to calculate energy
+    const previousLog = await PowerLog.findOne()
+      .sort({ timestamp: -1 })
+      .lean();
+
+    // Time difference in seconds (assume 1 second if first reading)
+    const now = new Date();
+    const timeDiff = previousLog 
+      ? (now - new Date(previousLog.timestamp)) / 1000 
+      : 1;
+
+    // Energy increment = power (W) * time (s) / 3600 (to convert to Wh)
+    const energyIncrement = (power * timeDiff) / 3600;
+    const totalEnergy = (previousLog?.energy || 0) + energyIncrement;
+
+    console.log(`\n[ESP32-RMS] Received: ${rms}`);
+    console.log(`[POWER] Calculated - Current: ${current.toFixed(3)}A, Power: ${power.toFixed(2)}W, Energy: ${totalEnergy.toFixed(4)}Wh\n`);
 
     const status = await DeviceStatus.findOne({ deviceId: 'ESP32_LED' });
     const deviceStatus = status ? status.status : 'OFF';
 
     const log = await PowerLog.create({
-      power: power || 0,
-      voltage: voltage || 220,
-      current: current || 0,
-      energy: energy || 0,
-      deviceStatus
+      power,
+      voltage: 230,
+      current,
+      energy: totalEnergy,
+      deviceStatus,
+      timestamp: timestamp ? new Date(timestamp) : now
     });
 
     res.json({ success: true, log });
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" }); // MODIFIED
+    console.error('[ESP32] Error processing power data:', error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

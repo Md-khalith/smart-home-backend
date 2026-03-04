@@ -32,12 +32,11 @@ router.post('/control', async (req, res) => {
     }
 
     try {
-      await axios.get(esp32Url, { timeout: 5000 });
+      console.log(`[ESP32] Attempting GET request to: ${esp32Url}`);
+      const response = await axios.get(esp32Url, { timeout: 10000 });
+      console.log(`[ESP32] Response status: ${response.status}`);
     } catch (error) {
-      return res.status(503).json({
-        error: 'Could not communicate with ESP32',
-        details: error.message
-      });
+      console.log(`[ESP32] Request failed - continuing anyway`);
     }
 
     let status = await DeviceStatus.findOne({ deviceId: 'ESP32_LED' });
@@ -68,28 +67,6 @@ router.post('/presence', async (req, res) => {
     await status.save();
 
     res.json({ success: true, presence: present });
-  } catch {
-    res.status(500).json({ error: "Internal server error" }); // MODIFIED
-  }
-});
-
-// Mode
-router.post('/mode', async (req, res) => {
-  try {
-    const { mode } = req.body;
-
-    if (!mode || !['MANUAL', 'AUTO'].includes(mode)) {
-      return res.status(400).json({ error: 'Invalid mode. Use MANUAL or AUTO' });
-    }
-
-    let status = await DeviceStatus.findOne({ deviceId: 'ESP32_LED' });
-    if (!status) status = await DeviceStatus.create({ deviceId: 'ESP32_LED' });
-
-    status.mode = mode;
-    status.lastUpdated = new Date();
-    await status.save();
-
-    res.json({ success: true, mode });
   } catch {
     res.status(500).json({ error: "Internal server error" }); // MODIFIED
   }

@@ -17,11 +17,6 @@ const deviceStatusSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  mode: {
-    type: String,
-    enum: ['MANUAL', 'AUTO'],
-    default: 'AUTO'
-  },
   lastUpdated: {
     type: Date,
     default: Date.now

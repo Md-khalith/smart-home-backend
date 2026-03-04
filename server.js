@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const deviceRoutes = require('./routes/device');
 const powerRoutes = require('./routes/power');
+const detectionRoutes = require('./routes/detection');
 const authRoutes = require('./routes/auth');
 const errorHandler = require('./middleware/errorHandler');
 const { protect } = require('./middleware/authMiddleware');
@@ -28,10 +29,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Public Routes
 app.use('/api/auth', authRoutes);
-
-// Protected Routes
-app.use('/api/device', protect, deviceRoutes);
-app.use('/api/power', protect, powerRoutes);
+app.use('/api/device', deviceRoutes);
+app.use('/api/power', powerRoutes);
+app.use('/api/detection', detectionRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
